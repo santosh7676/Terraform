@@ -1,0 +1,64 @@
+provider "aws" {
+  region = "us-west-2"
+  access_key="********"
+  secret_key="*******************"
+}
+
+resource "aws_instance" "web1" {
+  ami           = "ami-083ac7c7ecf9bb9b0"
+  instance_type = "t2.micro"
+  key_name = "28jul"
+
+  tags = {
+    Name = "mytfweb"
+  }
+
+  provisioner "remote-exec" {
+    inline = [
+      "sudo yum install -y nginx"
+    ]
+  
+  connection {
+    type     = "ssh"
+    user     = "ec2-user"
+    private_key = file("./28jul.pem")
+    host     = self.public_ip
+  }
+  
+  }
+  
+}
+
+resource "aws_eip" "my_eip" {
+  vpc      = true
+}
+
+
+resource "aws_eip_association" "eip_assoc" {
+  instance_id   = aws_instance.web1.id
+  allocation_id = aws_eip.my_eip.id
+
+}
+
+resource "aws_security_group" "sg1" {
+  name        = "allow_mytcp"
+  ingress {
+    from_port        = 443
+    to_port          = 443
+    protocol         = "tcp"
+    cidr_blocks      = ["${aws_eip.my_eip.public_ip}/32"]
+
+#  ingress {
+#    from_port        = 80
+#    to_port          = 80
+#    protocol         = "tcp"
+#    cidr_blocks      = ["${aws_eip.my_eip.public_ip}/32"]
+
+}
+}
+}                                                                                                                                     1,2           Top
+
+output "public_eipaddr"{
+  value= aws_eip.my_eip.public_ip
+  }
+  
